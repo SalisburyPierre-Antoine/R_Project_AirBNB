@@ -1,0 +1,276 @@
+---
+title: "dsti_a21_R"
+author: "Salisbury Pierre-Antoine - DA Student"
+date: "11/10/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##1.1.1 Load dataframe and introduction
+
+```{r}
+
+df <- load('C:/Users/Pierre-AntoineSALISB/OneDrive - OCSI GROUP/Bureau/DSTI_courses/R/AirBnB.Rdata')
+
+```
+
+
+ ***Explaination of Shiny app and R markdown***
+
+* Dataset
+
+* About : approach for the exam’s questions
+
+* Structure : dtype and quick look about how our variables are composed.
+
+* Summary Stats : basic information about variables. For instance different values. Number of NA if there are null values, min and max values.  
+
+ ***Visualisation***
+
+* Distribution : Interactive distribution about selected variables (Price, ID, Room_type , Accommodates , Availability_365, Number_of_reviews) Select the variable in order to get the appropriate column.The majority of prices are between 100 and 200 dollars. The average per night is around 75 dollars. Most landlords rent the entire unit. only a tiny part rents a room at the inhabitant. Most of the rented accommodation has between 2 and 4 rooms. Most accommodation is available for much of the year. A considerable part ads must be deactivated because they display availability at 0 days per year. The number of comments tends to decrease from about ten.
+
+* Relationship Interactive distribution about selected variables (Price, ID, Room_type , Accommodates , Availability_365, Number_of_reviews) Play with select x and y variables in order to analyse relashionships. For instance : there is a clear relationship between the availability_365 variable and price. Which means that announces available all year tend to be most expensive. However, that we have observed the correlation matrix we notice that the index is not very high (0.1). Regarding number of reviews and price, thanks to the regression line, we observe that the relation is not obvious.Hence the interest of drawing a linear model. There are few listings with a high price (>750$) and few listings with a high number of comments (>200), which gave us the impression of a relationship at first. We add the correlation coefficient and we can thus verify that the correlation is zero. With -0.0053, we clearly cannot speak of correlation. About accommodates, the relationship is the most obvious : it is quite strong and approved by the correlation matrix (0.6). In other words, the more people the space can accommodate, the higher its price.
+
+* Boxplot : Unsurprisingly, the box plot to offer types of rentals confirms that renting an entire apartment costs more than a room or a shared room.
+
+* Histogram1 : About the number of apartments, most owners rent one or two apartments. Airbnb responds well to its culture: it is a question of offering short-term rentals between individuals. However, some landlords rent a significant number of apartments. for them it is more a real business than additional income. We notice that some owners have more than 500 apartments. At this level it is necessary to check if these are not outliers.
+
+* Histogram2 : We observe disparities according to the districts. If Paris is divided into arrondissements and some are more expensive than others. We should not limit ourselves to this analysis because the 18th, which stands out among the most expensive arrondissements, can be very expensive at the top of the Montmartre hill and much more accessible or even inexpensive on the peripheral edge at door level.
+
+* Correlation matrix : We can observe certain correlations between prices and our target variables. For example, we have seen that there is a strong correlation between the price and the number of beds. On the other hand, there is clearly no correlation between the price and the number of reviews.
+
+* Date : Unfortunately, I didn't find the solution to dig into the last point. But I still extracted the dates, did a join, and came up with a histogram that shows a real increase in reviews over the years. This leads us to think of a significant growth of the Airbnb site between 2012 and 2016.
+
+* To go further : Owner list with more than 50 apartements : We add the id and the name of the owner because it can be consider as suspicious a huge number of appartement. Why is this suspicious? We notice that there are no owners who have between 50 and 500 apartments. On the other hand, a considerable number of more than 500 apartments, hence the questioning of the fact that these values are outliers.
+
+
+##1.1.2 Mainly information about our data :
+
+ 
+*id - Listing ID
+*name - Listing Title
+*host_id - ID of Host
+*host_name - Name of Host
+*room_type - Type of public space that is being offered
+*price - price per night, USD
+*number_of_reviews - total number of reviews that listing has accumulated
+*last_review - date in which listing was last rented
+*availability_365 - number of days per year the listing is active
+
+##1.2 Install libraries
+
+* Install packages and libraries
+* We have previously installed the following packages : ggplot2, shiny, tidyr, tidyverse, ggpubr, gridExtra, wigdets html, dplyr, knitr, libridate, rmarkdown et markdown
+
+```{r}
+
+library(shiny)
+library(ggplot2)
+library(ggtext)
+library(tidyr)
+library(tidyverse)
+library(ggpubr)
+library(gridExtra)
+library(plotly)
+library(shinycssloaders)
+library(lubridate)
+library(scales)
+library(dplyr)
+library(shinycssloaders)
+library(knitr)
+library(rmarkdown)
+library(markdown)
+
+```
+##1.3 Clean data
+
+* Remoove $ sign and convert Price to integer
+* Rename listing_id as id in R DF
+* Left join on id to L DF
+* Add date from R DF to L DF with keeping all L
+* Convert date to Date format
+* Price to numeric
+
+
+```{r}
+
+L$price <- gsub("\\$","",L$price)
+L$price <- as.integer(L$price)
+colnames(R)[colnames(R) == 'listing_id'] <- 'id'
+L<- left_join(L,R, by= 'id')
+L$date <- ymd(L$date)  
+L$year <- substr(L$date, 1,4)
+L$price <- as.numeric(L$price)
+L$number_of_reviews <- as.numeric(L$number_of_reviews)
+L$availability_365 <- as.numeric(L$availability_365)
+L$accommodates <- as.numeric(L$accommodates)
+
+```
+
+##2.1 Relationship between prices and appartement features
+
+###2.1.1 Availability_365 and price
+
+ * A relationship is between to numeric variables
+
+
+```{r, fig.width=5, fig.height =5, echo=FALSE}
+
+L %>%
+ggplot(aes(availability_365, price))+
+  geom_smooth(method = "lm",
+  formula = y~x) +
+  xlab("Availability during year") +
+  ylab("Price") +
+  ggtitle("Relationship between night price and availability",
+          subtitle = "Clear relationship")
+
+```
+###2.1.2 Number of reviews and price
+
+* Number of reviews and price
+* Add regression line, R and p-value
+
+```{r,  fig.width=5, fig.height =5,echo=FALSE}
+
+
+L %>%
+  ggplot(aes(x = number_of_reviews,y = price))+
+  geom_point(color="Red", alpha=0.1)+
+  geom_smooth(method = "lm",
+              formula = y~x) +
+  stat_cor(method = "pearson", label.x = 10)+
+  xlab("Number of reviews") +
+  ylab("Price") +
+  ggtitle("Relationship between night price and reviews",
+          subtitle = "Not so clear relationship")
+
+```
+
+* Thanks to the regression line, we observe that the relation is not obvious.
+*Hence the interest of drawing a linear model.
+* There are few listings with a high price (>750$) and few listings with a high number of comments (>200), which gave us the impression of a relationship at first.
+* We add the correlation coefficient and we can thus verify that the correlation is zero.
+* With -0.0048, we clearly cannot speak of correlation.
+
+
+###2.2 Accommodates and price
+
+```{r,  fig.width=5, fig.height =5,echo=FALSE}
+L %>%
+ggplot(aes(x = accommodates,y = price))+
+  geom_point(color="Red", alpha=0.1)+
+  geom_smooth(method = "lm",
+              formula = y~x) +
+  xlab("Accommodates") +
+  ylab("Price") +
+  ggtitle("Relationship between night price and accommodates",
+          subtitle = "Clear relationship")
+
+```
+
+* Unsurprisingly, the more coins, the higher the price.
+* Without making the graphs, we have the same types of relations for the number of bathrooms, bedrooms, beds.
+* To go further, we could analyze weekly and monthly prices according to other criteria.
+
+
+###2.3 Entire home or apartment,Private Room, Shared Room
+
+* Now let's try to analyze categorical variables with boxplot
+* Price by room type: boxplots
+* Lets't do boxplots from cheeper to hightest prices
+
+```{r,  fig.width=5, fig.height =5,echo=FALSE}
+
+L %>%
+ggplot(aes(x = room_type, y = price)) +
+  geom_boxplot(aes(fill = room_type)) + scale_y_log10() +
+  xlab("Room type") +
+  ylab("Price") +
+  ggtitle("Price by room type",
+          subtitle = "Highest avg price for entire property")
+```
+###2.4 Number of appartement per owners
+
+* We create a subset with the number of apartments per distinct owner
+
+```{r,  fig.width=5, fig.height =5,echo=FALSE}
+
+owner = L %>%
+  group_by(host_id) %>%
+  summarise(nb = n())
+
+# Histogram
+ggplot(owner, aes(x=nb)) +
+  geom_histogram(col = "#1b98e0", binwidth = 1)+
+  scale_y_log10() +
+  xlab("Number of properties") +
+  ylab("Count of host") +
+  ggtitle("Number of appertements per owner",
+          subtitle = "Most of owners rent one appartement")
+
+```
+
+###2.5 Owners list with more than 50 apartments
+
+* We create a column with the ID number and the nickname of the owner
+
+```{r,  fig.width=6, fig.height =6,echo=FALSE}
+
+L$host_name_id <- paste(L$host_name,L$host_id,sep="--")
+L <- L[c(-(1:2))]
+
+top <- data.frame(head(sort(table(L$host_name_id), decreasing=TRUE),n=100))
+colnames(top) <- c("host","listing_count")
+top %>%
+  head(30) %>%
+  mutate(over_50_listing = ifelse(listing_count >= 50, T, F)) %>%
+  ggplot(aes(x=reorder(host, listing_count),y = listing_count),)+
+  geom_bar(aes(fill=over_50_listing),stat='identity') +
+  scale_fill_manual(values = c('red', 'orange'))+
+  coord_flip()+
+  labs(x = 'Host', y = 'Listing Count',title = 'Top Hosts')
+
+```
+
+###2.6 Renting price per city quarter (arrondissements)
+
+* Don't forget to include 75116 since 75116 represents 16th North and 75016 represents 16th South
+
+* The 18th and 11th are the arrondissements where there are the most ads
+
+```{r,  fig.width=5, fig.height =5,echo=FALSE}
+
+quarter_price <- L %>%
+filter(zipcode == 75001:75116) %>%
+  group_by(zipcode) %>% summarise(Mean_Price = mean(price))
+  mpa <- quarter_price[with(quarter_price,order(-Mean_Price)),]
+  mpa <- mpa[1:21,]
+
+ggplot(mpa, aes(x = reorder(zipcode, -Mean_Price), y = Mean_Price)) +
+  geom_bar(stat="identity",colour="black", fill = "tomato3") +
+  labs(title="Average Price of Rooms in each arrondisssement", subtitle = "From highest to lowest") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5), legend.position = c(0.8, 0.5), axis.text.x = element_text(angle = 90)) + xlab("") + ylab("Mean Price")
+
+
+```
+
+
+###2.7 Evolution of the number of reviews according to the years
+
+* There is more and more activity. The year 2016 is underway
+
+```{r,  fig.width=5, fig.height =5,echo=FALSE}
+
+ggplot(L, aes(x = year, y = number_of_reviews)) +
+  geom_area(fill="lightblue", color="black") +
+  labs(title = "Number of reviews evolution",
+       x = "year",
+       y = "number of reviews")
+
+```
